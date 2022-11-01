@@ -1,0 +1,156 @@
+{% extends "main/layout.html" %}
+
+{% block css %}
+{{ block.super }}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.css" integrity="sha512-/zs32ZEJh+/EO2N1b0PEdoA10JkdC3zJ8L5FTiQu82LR9S/rOQNfQN7U59U9BC12swNeRAz3HSzIL2vpp4fv3w==" crossorigin="anonymous" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css" integrity="sha512-mSYUmp1HYZDFaVKK//63EcZq4iFWFjxSL+Z3T/aCt4IO9Cejm03q3NKKYN6pFQzY0SBOr8h+eCIAZHPXcpZaNw==" crossorigin="anonymous" />
+<style>
+	#web {
+		font-size: .875rem;
+	}
+	#web .sidebar {
+		position: fixed;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		z-index: 0;
+		padding: 48px 0 0;
+		box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+	}
+	@media (max-width: 767.98px) {
+		#web .sidebar {
+			/*TODO: inline*/
+		}
+	}
+	#web .sidebar .nav-link {
+		font-weight: 500;
+		color: #333;
+	}
+	#web .sidebar .nav-link .feather {
+		margin-right: 4px;
+		color: #727272;
+	}
+	#web .sidebar .nav-link.active {
+		color: #007bff;
+	}
+	#web .sidebar .nav-link:hover .feather,
+	#web .sidebar .nav-link.active .feather {
+		color: inherit;
+	}
+</style>
+{% endblock %}
+
+{% block content %}
+<main id="web" class="container-fluid">
+	<div class="row">
+		<nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+			<div class="pt-4">
+				<ul class="nav flex-column">
+					<li class="nav-item">
+						{% url 'main:web_region' as link_url %}
+						<a class="nav-link {% if request.get_full_path == link_url %}active{% endif %}" href="{{ link_url }}"><i class="fa fa-list me-1"></i>Přehled</a>
+					</li>
+					{% for region in regions %}
+						<li class="nav-item">
+							{% url 'main:web_region_detail' regionId=region.region.id as link_url %}
+							<a class="nav-link {% if request.get_full_path == link_url %}active{% endif %}" href="{{ link_url }}"><i class="fa fa-map-signs me-1"></i>{{ region.region.name }}</a>
+						</li>
+					{% endfor %}
+				</ul>
+			</div>
+		</nav>
+		<main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="margin-bottom:75px;">
+			<div class="mt-4">
+				{% block content_detail %}
+					<table id="web-region-table" class="table table-striped">
+						<thead>
+							<tr>
+								<th>Název regionu</th>
+								<th>Počet zařízení</th>
+								<th>Aktuální spotřeba (W)</th>
+								<th>Dnešní spotřeba (kWh)</th>
+								<th>Celková spotřeba (kWh)</th>
+								{% comment %}<th></th> {% endcomment %}
+							</tr>
+						</thead>
+						<tbody>
+							{% for region in regions %}
+								<tr data-id="{{ region.region.id }}">
+									<td>
+										<a href="{% url 'main:web_region_detail' regionId=region.region.id %}">
+											{{ region.region.name }}
+										</a>
+									</td>
+									<td>{{ region.region.devices.count }}</td>
+									<td><i class="web-region-table-loading fas fa-spinner fa-spin"></i><span class="web-region-table-value visually-hidden"><span data-field="current_energy">{{ region.current_energy|floatformat:2 }}</span> W</span></td>
+									<td><i class="web-region-table-loading fas fa-spinner fa-spin"></i><span class="web-region-table-value visually-hidden"><span data-field="today_energy">{{ region.today_energy|floatformat:2 }}</span> kWh</span></td>
+									<td><i class="web-region-table-loading fas fa-spinner fa-spin"></i><span class="web-region-table-value visually-hidden"><span data-field="total_energy">{{ region.total_energy|floatformat:2 }}</span> kWh</span></td>
+									{% comment %}
+									<td>
+										<a href="{% url 'main:web_region_detail' regionId=region.region.id %}" class="btn btn-primary btn-sm">
+											Detail regionu
+										</a>
+									</td>
+									{% endcomment %}
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				{% endblock %}
+			</div>
+			{% include "main/include_footer_side.html" %}
+		</main>
+	</div>
+</main>
+{% endblock %}
+
+{% block js %}
+{{ block.super }}
+{% load static %}
+<!--<script src="{% static 'main/graphql.min.js' %}" crossorigin="anonymous"></script>-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment-with-locales.min.js" integrity="sha512-LGXaggshOkD/at6PFNcp2V2unf9LzFq6LE+sChH7ceMTDP0g2kn6Vxwgg7wkPP7AAtX+lmPqPdxB47A0Nz0cMQ==" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js" integrity="sha512-d9xgZrVZpmmQlfonhQUvTR7lMPtO7NkZMkA0ABN3PHCbKA5nqylQ/yWlFAyY6hYgdF1Qh6nYiuADWwKB4C2WSw==" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js" integrity="sha512-T/tUfKSV1bihCnd+MxKD0Hm1uBBroVYBOYSk1knyvQ9VyZJpc/ALb4P0r6ubwVPSGB2GvjeoMAJJImBG12TiaQ==" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/locales/bootstrap-datepicker.cs.min.js" integrity="sha512-spbGogUIGjhZrZqmOrIHV0T+QWHv0wtguDz5eTdfH/akeQ/dyCHCkRYcOvO4zc410n7volyHNcKtzZGFX7/mlQ==" crossorigin="anonymous"></script>
+<script>
+	var regionInterval = null;
+
+	var regionIntervalFn = function() {
+		if (regionInterval) {
+			clearInterval(regionInterval);
+		}
+
+		regionInterval = setTimeout(regionIntervalFn, 60000);
+
+		$.get(
+			'/web-region.json',
+			function(data) {
+				if (regionInterval) {
+					clearInterval(regionInterval);
+				}
+
+				regionInterval = setTimeout(regionIntervalFn, 10000);
+
+				for (var regionIndex in data) {
+					var regionData = data[regionIndex];
+
+					$('#web-region-table [data-id="' + regionData.region_id + '"] [data-field="current_energy"]').text(Math.round(regionData.current_energy * 100) / 100);
+					$('#web-region-table [data-id="' + regionData.region_id + '"] [data-field="today_energy"]').text(Math.round(regionData.today_energy * 100) / 100);
+					$('#web-region-table [data-id="' + regionData.region_id + '"] [data-field="total_energy"]').text(Math.round(regionData.total_energy * 100) / 100);
+				}
+
+				// $('#web-region-table').css({'opacity': '1'});
+
+				$('#web-region-table .web-region-table-loading').addClass('visually-hidden');
+				$('#web-region-table .web-region-table-value').removeClass('visually-hidden');
+			}
+		);
+	};
+
+	if ($('#web-region-table').length > 0) {
+		// $('#web-region-table').css({'opacity': '0.5'});
+
+		regionInterval = setTimeout(regionIntervalFn, 0);
+	}
+</script>
+{% endblock %}

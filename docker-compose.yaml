@@ -1,0 +1,203 @@
+version: '3.7'
+x-deploy-version: &DEPLOY_VERSION 2
+services:
+  nginx:
+    image: nginx:1.19-alpine
+    environment:
+      DEPLOY_VERSION: *DEPLOY_VERSION
+      DEPLOY_SUB_VERSION: 1
+    volumes:
+      - nginx_config:/etc/nginx
+      - nginx_data:/usr/share/nginx
+#      - acmesh_data:/acme.sh
+    networks:
+      - overlay
+      - nginx
+    ports:
+      - 9090:80
+      - 4433:443
+    depends_on:
+      - adminer
+      - frontend
+#  acmesh:
+#    image: neilpang/acme.sh:latest
+#    volumes:
+#      - acmesh_data:/acme.sh
+#    command: "daemon"
+#    depends_on:
+#      - nginx
+  db:
+    image: web_db:local
+    environment:
+      DEPLOY_VERSION: *DEPLOY_VERSION
+      DEPLOY_SUB_VERSION: 1
+      MYSQL_ROOT_PASSWORD: #DB PASS doplň
+    volumes:
+      - db_data:/var/lib/mysql
+      - /root/web/db/50-server.cnf:/etc/mysql/mariadb.conf.d/50-server.cnf
+    networks:
+      - db
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 10
+        window: 15s
+  adminer:
+    image: adminer:latest
+    environment:
+      DEPLOY_VERSION: *DEPLOY_VERSION
+      DEPLOY_SUB_VERSION: 1
+      ADMINER_DEFAULT_SERVER: db
+    networks:
+      - nginx
+      - db
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 15s
+        max_attempts: 10
+        window: 15s
+    depends_on:
+      - db
+  mqtt:
+    image: web_mqtt:local
+    environment:
+      DEPLOY_VERSION: *DEPLOY_VERSION
+      DEPLOY_SUB_VERSION: 1
+    volumes:
+      - mqtt_data:/mosquitto/data
+      - mqtt_log:/mosquitto/log
+      - ./mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mqtt/users:/mosquitto/config/users:ro
+    networks:
+      - overlay
+      - mqtt
+    ports:
+      - 1883:1883
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 10
+        window: 15s
+  smtp:
+    image: eeacms/postfix:latest
+    environment:
+      DEPLOY_VERSION: *DEPLOY_VERSION
+      DEPLOY_SUB_VERSION: 1
+    networks:
+      - smtp
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 30s
+        max_attempts: 10
+        window: 15s
+  cron:
+    image: web_cron:local
+    environment:
+      DEPLOY_VERSION: *DEPLOY_VERSION
+      DEPLOY_SUB_VERSION: 2
+    volumes:
+      - ./cron/app:/usr/src/app:ro
+    networks:
+      - db
+      - smtp
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 15s
+        max_attempts: 10
+        window: 15s
+    depends_on:
+      - db
+      - smtp
+  bridge_log:
+    image: web_bridge_log:local
+    environment:
+      DEPLOY_VERSION: *DEPLOY_VERSION
+      DEPLOY_SUB_VERSION: 2
+    volumes:
+      - ./bridge_log/app:/usr/src/app:ro
+    networks:
+      - db
+      - mqtt
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 15s
+        max_attempts: 10
+        window: 15s
+    depends_on:
+      - db
+      - mqtt
+  bridge_action:
+    image: web_bridge_action:local
+    environment:
+      DEPLOY_VERSION: *DEPLOY_VERSION
+      DEPLOY_SUB_VERSION: 2
+    volumes:
+      - ./bridge_action/app:/usr/src/app:ro
+    networks:
+      - db
+      - mqtt
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 15s
+        max_attempts: 10
+        window: 15s
+    depends_on:
+      - db
+      - mqtt
+  frontend:
+    image: web_frontend:local
+    environment:
+      DEPLOY_VERSION: *DEPLOY_VERSION
+      DEPLOY_SUB_VERSION: 4
+    volumes:
+      - nginx_data:/usr/share/nginx
+      - ./frontend/app:/usr/src/app
+    networks:
+      - nginx
+      - db
+      - smtp
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 30s
+        max_attempts: 10
+        window: 15s
+    depends_on:
+      - db
+      - smtp
+networks:
+  overlay:
+  nginx:
+  db:
+  mqtt:
+  smtp:
+volumes:
+  nginx_config:
+  nginx_data:
+#  acmesh_data:
+  db_data:
+  mqtt_data:
+  mqtt_log:

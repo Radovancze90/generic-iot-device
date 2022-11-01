@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="cs-CZ">
+	<head>
+		<meta charset="utf-8">
+		<title>název...</title>
+		<meta name="description" content="">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<meta name="theme-color" content="#e60303">
+		<link rel="icon" type="image/png"  href="favicon.png">
+		{% block css %}
+			<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/css/bootstrap.min.css"
+				  rel="stylesheet"
+				  integrity="sha384-BmbxuPwQa2lc/FVzBcNJ7UAyJxM6wuqIj61tLrc4wSX0szH/Ev+nYRRuWlolflfl"
+				  crossorigin="anonymous">
+			<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.2/css/all.min.css"
+				  rel="stylesheet"
+				  crossorigin="anonymous">
+			<style>
+				#header {
+					z-index: 100;
+				}
+			</style>
+		{% endblock %}
+	</head>
+	<body>
+		<nav id="header" class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+			<div class="container-fluid">
+				<!--<a class="navbar-brand" href="{% url 'main:homepage' %}">
+					<img src="" alt="logo" height="40">
+				</a>-->
+				<button class="navbar-toggler"
+						type="button"
+						data-bs-toggle="collapse"
+						data-bs-target="#navbarText"
+						aria-controls="navbarText"
+						aria-expanded="false"
+						aria-label="Zobrazit navigaci">
+					<span class="navbar-toggler-icon"></span>
+				</button>
+				<div class="collapse navbar-collapse" id="navbarText">
+					<ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+						{% if user.is_authenticated %}
+							<li class="navbar-text">
+								Uživatel: <em>{{ user.username }}</em>
+							</li>
+							<li class="nav-item">
+								{% url 'main:web' as link_url %}
+								<a class="nav-link {% if request.get_full_path == link_url %}active{% endif %}" aria-current="page" href="{{ link_url }}">Přehled</a>
+							</li>
+							{% if user.is_staff %}
+								<li class="nav-item">
+									{% url 'main:web_region' as link_url %}
+									<a class="nav-link {% if link_url in request.path %}active{% endif %}" aria-current="page" href="{{ link_url }}">Regiony</a>
+								</li>
+							{% endif %}
+							<li class="nav-item">
+								{% url 'main:web_device' userDeviceId=0 as link_url %}
+								<a class="nav-link {% if request.get_full_path == link_url %}active{% endif %}" aria-current="page" href="{{ link_url }}">Přidat zařízení</a>
+							</li>
+							<li class="nav-item">
+								{% url 'main:profile' as link_url %}
+								<a class="nav-link {% if request.get_full_path == link_url %}active{% endif %}" aria-current="page" href="{{ link_url }}">Profil</a>
+							</li>
+							{% if user.is_staff %}
+								<li class="nav-item">
+									<a class="nav-link" aria-current="page" href="/admin">Admin</a>
+								</li>
+							{% endif %}
+							<li class="nav-item">
+								{% url 'main:logout' as link_url %}
+								<a class="nav-link {% if request.get_full_path == link_url %}active{% endif %}" aria-current="page" href="{{ link_url }}">Odhlášení</a>
+							</li>
+						{% else %}
+							<li class="nav-item">
+								{% url 'main:login' as link_url %}
+								<a class="nav-link {% if request.get_full_path == link_url %}active{% endif %}" aria-current="page" href="{{ link_url }}">Přihlášení</a>
+							</li>
+							<li class="nav-item">
+								{% url 'main:register' as link_url %}
+								<a class="nav-link {% if request.get_full_path == link_url %}active{% endif %}" aria-current="page" href="{{ link_url }}">Registrace</a>
+							</li>
+						{% endif %}
+						<li class="nav-item">
+							<a class="nav-link" aria-current="page" href="https://smart.naxter.cz/kontakty" target="_blank"><i class="fa fa-question-circle"></i></a>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</nav>
+		{% block content %}
+		{% endblock %}
+		{% block js %}
+			<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"
+				integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4="
+				crossorigin="anonymous"></script>
+			<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/js/bootstrap.bundle.min.js"
+				integrity="sha384-b5kHyXgcpbZJO/tY9Ul7kGkf1S0CWuKcCD38l8YkeH8z8QjE0GmW1gYU5S9FOnJ0"
+				crossorigin="anonymous"></script>
+		{% endblock %}
+	</body>
+</html>

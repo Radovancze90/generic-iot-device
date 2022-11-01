@@ -1,0 +1,496 @@
+{% extends "main/layout.html" %}
+
+{% block css %}
+	{{ block.super }}
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.css" integrity="sha512-/zs32ZEJh+/EO2N1b0PEdoA10JkdC3zJ8L5FTiQu82LR9S/rOQNfQN7U59U9BC12swNeRAz3HSzIL2vpp4fv3w==" crossorigin="anonymous" />
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css" integrity="sha512-mSYUmp1HYZDFaVKK//63EcZq4iFWFjxSL+Z3T/aCt4IO9Cejm03q3NKKYN6pFQzY0SBOr8h+eCIAZHPXcpZaNw==" crossorigin="anonymous" />
+	<style>
+		#web {
+			font-size: .875rem;
+		}
+		#web .sidebar {
+			position: fixed;
+			top: 0;
+			bottom: 0;
+			left: 0;
+			z-index: 0;
+			padding: 48px 0 0;
+			box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+		}
+		@media (max-width: 767.98px) {
+			#web .sidebar {
+				/*TODO: inline*/
+			}
+		}
+		#web .sidebar .nav-link {
+			font-weight: 500;
+			color: #333;
+		}
+		#web .sidebar .nav-link .feather {
+			margin-right: 4px;
+			color: #727272;
+		}
+		#web .sidebar .nav-link.active {
+			color: #007bff;
+		}
+		#web .sidebar .nav-link:hover .feather,
+		#web .sidebar .nav-link.active .feather {
+			color: inherit;
+		}
+	</style>
+{% endblock %}
+
+{% block content %}
+	<main id="web" class="container-fluid">
+		<div class="row">
+			<nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+				<div class="pt-4">
+					<ul id="web-devices-list" class="nav flex-column">
+						<li class="nav-item web-device-overview">
+							<a class="nav-link active" href="#">
+								<i class="fa fa-list me-1"></i>
+								Přehled
+							</a>
+						</li>
+					</ul>
+					<ul class="nav flex-column">
+						<li class="nav-item">
+							<a class="nav-link" href="{% url 'main:web_device' userDeviceId=0 %}">
+								<i class="fa fa-plus me-1"></i>
+								Přidat zařízení
+							</a>
+						</li>
+					</ul>
+				</div>
+			</nav>
+			<main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="margin-bottom:75px;">
+				<div id="web-devices-overview" class="row mt-4">
+					<div class="loading col-12 text-center mt-5">
+						<i class="fas fa-spinner fa-spin" style="font-size: 64px;"></i>
+					</div>
+				</div>
+				<div id="web-device-overview" class="row mt-4 visually-hidden">
+					<div class="mt-4 mb-4 pb-2 border-bottom">
+						<h1 class="display-5 d-inline-block" id="web-device-overview-title"></h1>
+						<a href="#" class="btn btn-primary float-end" id="web-device-overview-edit">Upravit zařízení</a>
+					</div>
+					<div class="mb-4 input-group input-daterange" id="web-device-overview-range" data-provide="datepicker" data-date-format="dd.mm.yyyy" data-language="cs">
+						<span class="input-group-text">Datum od</span>
+						<input type="text" required="" class="form-control">
+						<span class="input-group-text">do</span>
+						<input type="text" required="" class="form-control" />
+					</div>
+					<div class="text-muted">Celková spotřeba za toto období: <span id="web-device-overview-total">0</span> kWh</div>
+					<canvas id="web-device-chart"></canvas>
+				</div>
+				{% include "main/include_footer_side.html" %}
+			</main>
+		</div>
+	</main>
+{% endblock %}
+
+{% block js %}
+	{{ block.super }}
+	{% load static %}
+	<script src="{% static 'main/graphql.min.js' %}" crossorigin="anonymous"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment-with-locales.min.js" integrity="sha512-LGXaggshOkD/at6PFNcp2V2unf9LzFq6LE+sChH7ceMTDP0g2kn6Vxwgg7wkPP7AAtX+lmPqPdxB47A0Nz0cMQ==" crossorigin="anonymous"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js" integrity="sha512-d9xgZrVZpmmQlfonhQUvTR7lMPtO7NkZMkA0ABN3PHCbKA5nqylQ/yWlFAyY6hYgdF1Qh6nYiuADWwKB4C2WSw==" crossorigin="anonymous"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js" integrity="sha512-T/tUfKSV1bihCnd+MxKD0Hm1uBBroVYBOYSk1knyvQ9VyZJpc/ALb4P0r6ubwVPSGB2GvjeoMAJJImBG12TiaQ==" crossorigin="anonymous"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/locales/bootstrap-datepicker.cs.min.js" integrity="sha512-spbGogUIGjhZrZqmOrIHV0T+QWHv0wtguDz5eTdfH/akeQ/dyCHCkRYcOvO4zc410n7volyHNcKtzZGFX7/mlQ==" crossorigin="anonymous"></script>
+	<script>
+		moment.locale('cs');
+
+		$('#web-device-overview-range input').each(function() {
+			$(this).datepicker({
+				language: 'cs',
+			});
+		});
+
+		var graph = graphql("/graphql/");
+
+		var myDevices = {};
+
+		var activeDevice = 0;
+
+		var activeDeviceChartContext = document.getElementById('web-device-chart').getContext('2d');
+
+		var activeDeviceChartConfig = {
+			data: {
+				datasets: [],
+			},
+			options: {
+				scales: {
+					xAxes: [
+						{
+							type: 'time',
+							time: {
+								unit: 'hour',
+								displayFormats: {
+									hour: 'D.M. H:mm',
+								},
+								tooltipFormat: 'D.M. H:mm',
+							},
+							scaleLabel: {
+								display: true,
+								labelString: 'Datum',
+							},
+							ticks: {
+								major: {
+									fontStyle: 'bold',
+									fontColor: '#FF0000'
+								}
+							},
+						},
+					],
+					yAxes: [
+						{
+							scaleLabel: {
+								display: true,
+								labelString: 'Watty',
+							},
+						},
+					]
+				},
+			},
+		};
+
+		var activeDeviceChart = new Chart(activeDeviceChartContext, activeDeviceChartConfig);
+
+		var loadMyDevices = function(isFirstLoad, cb, ecb) {
+			let query = `query {
+			  myUserDevices {
+				id
+				device {
+				  id
+				  mac
+				  updatedAt
+				  relayState
+				  relayStateUpdatedAt
+				  energyValue
+				  currentValue
+				  voltageValue
+				}
+				name
+				addressStreet
+				addressCity
+				addressPostalCode
+				addressCountry
+			  }
+			}`;
+
+			if (isFirstLoad) {
+				query = `query {
+				  myUserDevices {
+					id
+					device {
+					  id
+					  mac
+					  updatedAt
+					  relayState
+					  relayStateUpdatedAt
+					}
+					name
+					addressStreet
+					addressCity
+					addressPostalCode
+					addressCountry
+				  }
+				}`;
+			}
+
+			graph(query)().then(function (result) {
+				result.myUserDevices.forEach(function(userDevice) {
+					myDevices[userDevice.id] = userDevice;
+				});
+
+				if (cb !== undefined) {
+					cb(myDevices);
+				}
+			}).catch(function (error) {
+				ecb();
+			});
+		};
+
+		var renderDevicesList = function(myDevices) {
+			$('#web-devices-list > .web-device').remove();
+
+			for (userDeviceId in myDevices) {
+				var userDevice = myDevices[userDeviceId];
+
+				var $el = $('<li />')
+					.attr('data-id', userDevice.id)
+					.addClass('nav-item')
+					.addClass('web-device')
+					.append(
+						$('<a />')
+							.attr('href', '#web-device-' + userDevice.id)
+							.addClass('nav-link')
+							.addClass(userDevice.id == activeDevice ? 'active' : null)
+							.append(
+								$('<i />')
+									.addClass('fa')
+									.addClass('fa-bicycle')
+									.addClass('me-1')
+							)
+							.append(userDevice.name)
+					);
+
+				$('#web-devices-list').append($el);
+			}
+		};
+
+		var renderDevicesCards = function(myDevices) {
+			$('#web-devices-overview > .loading').remove();
+			$('#web-devices-overview > .web-device').remove();
+
+			for (userDeviceId in myDevices) {
+				var userDevice = myDevices[userDeviceId];
+				var online = userDevice.device.updatedAt ? moment.duration(moment().diff(moment(userDevice.device.updatedAt.replace('+00:00', ''), 'YYYY-MM-DD hh:mm:ss'))).asSeconds() < 30 : false;
+
+				var $el = $('<div />')
+					// .attr('id', 'web-device-' + userDevice.id)
+					.data('id', userDevice.id)
+					.addClass('web-device col-lg-4 col-md-6 col-sm-12 mb-4')
+					.append(
+						$('<div />')
+							.addClass('card')
+							.append(
+								$('<div />')
+									.addClass('card-header')
+									.addClass(online ? (userDevice.device.relayState == '1' ? 'bg-success text-white' : 'bg-danger text-white') : 'bg-secondary text-white')
+									.append(
+										$('<b />')
+											.append(document.createTextNode(userDevice.name))
+										)
+									.append(
+										$('<a />')
+											.attr('href', '/web/' + userDevice.id + '/')
+											.addClass('btn btn-warning btn-sm float-end')
+											.text('Upravit')
+									)
+							)
+							.append(
+								$('<div />')
+									.addClass('card-body')
+									.append(
+										$('<p />')
+											.addClass('card-text')
+											.append('Poslední přepnutí: ' + (userDevice.device.relayStateUpdatedAt ? moment(userDevice.device.relayStateUpdatedAt.replace('+00:00', ''), 'YYYY-MM-DD hh:mm:ss').fromNow() : 'Nikdy'))
+											.append($('<br />'))
+											.append(
+												typeof userDevice.device.currentValue === 'undefined' ?
+
+													$('<span />')
+														.append('Aktuální spotřeba: ')
+														.append(
+															$('<i />')
+																.addClass('fas fa-spinner fa-spin')
+														) :
+													('Aktuální spotřeba: ' + (userDevice.device.currentValue && userDevice.device.voltageValue ? (Math.round(userDevice.device.currentValue * userDevice.device.voltageValue * 100) / 100) : '0') + ' W')
+											)
+											.append($('<br />'))
+											.append(
+												typeof userDevice.device.energyValue === 'undefined' ?
+
+													$('<span />')
+														.append('Celková spotřeba: ')
+														.append(
+															$('<i />')
+																.addClass('fas fa-spinner fa-spin')
+														) :
+													('Celková spotřeba: ' + (userDevice.device.energyValue ? (Math.round(userDevice.device.energyValue * 100) / 100) : '0') + ' kWh')
+											)
+											// ------- teplota
+											.append($('<br />'))
+											.append(
+												typeof userDevice.device.temperature === 'undefined' ?
+													//TODO-TB: U teploty se stále točí kolečko asi tam něco chybí
+													$('<span />')
+														.append('Teplota: ')
+														.append(
+															$('<i />')
+																.addClass('fas fa-spinner fa-spin')
+														) :
+													('Teplota: ' + (userDevice.device.temperature) + ' °C')
+											)
+											// -------
+									)
+							)
+							.append(
+								$('<div />')
+									.addClass('card-body border-top')
+									.append(
+										$('<div />')
+											.addClass('row')
+											.append(
+												$('<div />')
+													.addClass('col-lg-6 col-md-6 col-sm-12 mt-2')
+													.append(
+														$('<input />')
+															.attr('id', 'web-device-relay-' + userDevice.id)
+															.attr('type', 'checkbox')
+															.attr('autocomplete', 'off')
+															.addClass('web-device-relay')
+															.addClass('btn-check')
+															.prop('checked', online && userDevice.device.relayState == '1')
+															.prop('disabled', !online)
+													)
+													.append(
+														$('<label />')
+															.attr('for', 'web-device-relay-' + userDevice.id)
+															.addClass('btn btn-outline-primary d-block')
+															.prop('disabled', !online)
+															.text(online ? (userDevice.device.relayState == '1' ? 'Vypnout' : 'Zapnout') : 'Nedostupné')
+													)
+											)
+											.append(
+												$('<div />')
+													.addClass('col-lg-6 col-md-6 col-sm-12 mt-2')
+													.append(
+														$('<a />')
+															.attr('href', '#web-device-' + userDevice.id)
+															.addClass('web-device-detail-link')
+															.addClass('btn btn-primary d-block')
+															.text('Graf')
+													)
+											)
+									)
+							)
+					);
+
+				$('#web-devices-overview').append($el);
+			}
+		};
+
+		var loadAndRenderDeviceLog = function() {
+			if (!activeDevice) {
+				return;
+			}
+
+			var voltage = parseInt(myDevices[activeDevice].device.voltageValue);
+			var rangeFrom = moment($($('#web-device-overview-range input')[0]).val(), 'DD.MM.YYYY').format('YYYY-MM-DD');
+			var rangeTill = moment($($('#web-device-overview-range input')[1]).val(), 'DD.MM.YYYY').format('YYYY-MM-DD');
+
+			$.get(
+				'/web/' + activeDevice +
+				'/log/' + '?from=' + rangeFrom + '%2000:00:00&till=' + rangeTill + '%2023:59:59',
+				function(response) {
+					$('#web-device-overview-total').text(Math.round(response.total_energy * 100) / 100);
+
+					var data = [];
+
+					for (var logIndex in response.log) {
+						var log = response.log[logIndex];
+
+						// if (log.option !== 'current') {
+						// 	continue;
+						// }
+
+						if (log.option !== 'apparent') {
+							continue;
+						}
+
+						data.push({
+							t: moment(log.created_at.replace('+00:00', ''), 'YYYY-MM-DD hh:mm:ss').toDate(),
+							// y: Math.round(parseFloat(log.value) * voltage * 100) / 100,
+							y: Math.round(parseFloat(log.value) * 100) / 100,
+						});
+					}
+
+					activeDeviceChartConfig.data.datasets = [
+						{
+							label: 'Spotřeba (W)',
+							data: data,
+							type: 'line',
+							backgroundColor: 'rgba(0, 255, 0, 0.2)',
+							borderColor: 'rgba(0, 255, 0, 0.5)',
+						},
+					];
+
+					activeDeviceChart.update();
+				}
+			);
+		};
+
+		var overviewInterval = null;
+
+		var overviewIntervalFn = function(isFirstLoad = false) {
+			loadMyDevices(isFirstLoad, function(myDevices) {
+				renderDevicesList(myDevices);
+				renderDevicesCards(myDevices);
+
+				overviewInterval = setTimeout(overviewIntervalFn, 1000);//3000
+			}, function() {
+				overviewInterval = setTimeout(overviewIntervalFn, 1000);//5000
+			});
+		};
+
+		var logInterval = null;
+
+		var logIntervalFn = function() {
+			loadAndRenderDeviceLog();
+
+			logInterval = setTimeout(logIntervalFn, 60000);
+		};
+
+		// -----
+
+		overviewIntervalFn(true);
+		logIntervalFn();
+
+		$($('#web-device-overview-range input')[0]).val(moment().subtract(1, 'week').format('DD.MM.YYYY'));
+		$($('#web-device-overview-range input')[1]).val(moment().format('DD.MM.YYYY'));
+
+		$('#web-device-overview-range input').each(function() {
+			$(this).datepicker('update');
+		});
+
+		// --
+
+		$(document).on('change', '.web-device-relay', function() {
+			clearInterval(overviewInterval);
+
+			$('label[for="' + $(this).attr('id') + '"]').html(
+				$('<i />')
+					.addClass('fas fa-spinner fa-spin')
+			);
+
+			$.get(
+				'/web/' + $(this).parents('.web-device').data('id') +
+					'/action/relay_' + ($(this).is(':checked') ? 'on' : 'off'),
+				function() {
+					overviewInterval = setTimeout(overviewIntervalFn, 1000); //3000
+				}
+			)
+		})
+
+		$(document).on('click', '#web-devices-list a.nav-link, a.web-device-detail-link', function(e) {
+			e.preventDefault();
+
+			$('#web-devices-list a.nav-link').removeClass('active');
+
+			activeDevice = parseInt($(this).parents('.web-device').data('id'));
+
+			if (!activeDevice) {
+				$('#web-device-overview').addClass('visually-hidden');
+				$('#web-devices-overview').removeClass('visually-hidden');
+				$('#web-devices-list .web-device-overview a.nav-link').addClass('active');
+
+				return;
+			}
+
+			$('#web-device-overview-title').text(myDevices[activeDevice].name);
+			$('#web-device-overview-edit').attr('href', '/web/' + activeDevice + '/');
+			$('#web-devices-overview').addClass('visually-hidden');
+			$('#web-device-overview').removeClass('visually-hidden');
+			$('#web-devices-list .web-device[data-id="' + activeDevice + '"] a.nav-link').addClass('active');
+
+			loadAndRenderDeviceLog();
+		});
+
+		$(document).on('change', '#web-device-overview-range input', function(e) {
+			clearInterval(logInterval);
+			logIntervalFn();
+		});
+	</script>
+{% endblock %}

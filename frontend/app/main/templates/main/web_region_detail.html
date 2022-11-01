@@ -1,0 +1,367 @@
+{% extends "main/web_region.html" %}
+
+{% block content_detail %}
+	<div class="mt-4 mb-4 pb-2 border-bottom">
+		<h1 class="display-6 d-inline-block">{{ region.name }}</h1>
+		<a href="{% url 'main:web_region' %}" class="btn btn-primary float-end">Přehled</a>
+	</div>
+	<div>
+		<table class="table table-sm">
+			<thead>
+				<tr>
+					<th>Název zařízení</th>
+					<th>Poslední přepnutí</th>
+					<th>Aktuální spotřeba</th>
+					<th>Celková spotřeba</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody id="web-devices-rows"></tbody>
+		</table>
+	</div>
+	<hr />
+	<div class="mb-4 input-group input-daterange" id="web-device-overview-range" data-provide="datepicker" data-date-format="dd.mm.yyyy" data-language="cs">
+		<span class="input-group-text">Datum od</span>
+		<input type="text" required="" class="form-control">
+		<span class="input-group-text">do</span>
+		<input type="text" required="" class="form-control" />
+	</div>
+	<div class="text-muted">Celková spotřeba za toto období: <span id="web-device-overview-total">0</span> kWh</div>
+	<canvas id="web-device-chart"></canvas>
+{% endblock %}
+
+{% block js %}
+{{ block.super }}
+{% load static %}
+<script src="{% static 'main/graphql.min.js' %}" crossorigin="anonymous"></script>
+<script>
+	var graph = graphql("/graphql/");
+	var devices = {};
+	var loadRegionDevices = function(isFirstLoad, cb, ecb) {
+		let query = `query{
+		  regionById(id: "{{ region.id }}") {
+			devices{
+			  id
+			  mac
+			  name
+			  updatedAt
+			  relayState
+			  relayStateUpdatedAt
+			  energyValue
+			  currentValue
+			  voltageValue
+			}
+		  }
+		}`;
+
+		if (isFirstLoad) {
+			query = `query{
+			  regionById(id: "{{ region.id }}") {
+				devices{
+				  id
+				  mac
+				  name
+				  updatedAt
+				  relayState
+				  relayStateUpdatedAt
+				}
+			  }
+			}`;
+		}
+
+		graph(query)().then(function (result) {
+			result.regionById.devices.forEach(function(device) {
+				devices[device.id] = device;
+			});
+
+			if (cb !== undefined) {
+				cb(devices);
+			}
+		}).catch(function (error) {
+			ecb();
+		});
+	};
+
+	var renderDevicesRows = function(devices) {
+		$('#web-devices-rows > .web-device').remove();
+
+		for (deviceId in devices) {
+			var device = devices[deviceId];
+			var online = device.updatedAt ? moment.duration(moment().diff(moment(device.updatedAt.replace('+00:00', ''), 'YYYY-MM-DD hh:mm:ss'))).asSeconds() < 30 : false;
+
+			var $el = $('<tr />')
+				.attr('data-id', device.id)
+				.addClass('web-device')
+				.append(
+					$('<td />')
+						// .append(
+						// 	$('<a />')
+						// 		.attr('href', '/web/' + device.id)
+						// 		.append(document.createTextNode(device.name))
+						// )
+						.append(document.createTextNode(device.name))
+				)
+				.append(
+					$('<td />')
+						.text(device.relayStateUpdatedAt ? moment(device.relayStateUpdatedAt.replace('+00:00', ''), 'YYYY-MM-DD hh:mm:ss').fromNow() : 'Nikdy')
+				)
+				.append(
+					typeof device.currentValue === 'undefined' ?
+
+						$('<td />')
+							.append(
+								$('<i />')
+									.addClass('fas fa-spinner fa-spin')
+							) :
+						$('<td />')
+							.text((device.currentValue && device.voltageValue ? (Math.round(device.currentValue * device.voltageValue * 100) / 100) : '0') + ' W')
+				)
+				.append(
+					typeof device.energyValue === 'undefined' ?
+
+						$('<td />')
+							.append(
+								$('<i />')
+									.addClass('fas fa-spinner fa-spin')
+							) :
+						$('<td />')
+							.text((device.energyValue ? (Math.round(device.energyValue * 100) / 100) : '0') + ' kWh')
+				)
+				.append(
+					$('<td />')
+						.append(
+							$('<input />')
+								.attr('id', 'web-device-relay-' + device.id)
+								.attr('type', 'checkbox')
+								.attr('autocomplete', 'off')
+								.addClass('web-device-relay')
+								.addClass('btn-check')
+								.prop('checked', online && device.relayState == '1')
+								.prop('disabled', !online)
+						)
+						.append(
+							$('<label />')
+								.attr('for', 'web-device-relay-' + device.id)
+								.addClass('btn btn-outline-primary btn-sm')
+								.prop('disabled', !online)
+								.text(online ? (device.relayState == '1' ? 'Vypnout' : 'Zapnout') : 'Nedostupné')
+						)
+				);
+
+			$('#web-devices-rows').append($el);
+		}
+	};
+
+	var overviewInterval = null;
+
+	var overviewIntervalFn = function(isFirstLoad = false) {
+		loadRegionDevices(isFirstLoad, function(devices) {
+			renderDevicesRows(devices);
+
+			overviewInterval = setTimeout(overviewIntervalFn, isFirstLoad ? 1000 : 5000);
+		}, function() {
+			overviewInterval = setTimeout(overviewIntervalFn, 10000);
+		});
+	};
+
+	overviewIntervalFn(true);
+
+	$(document).on('change', '.web-device-relay', function() {
+		clearInterval(overviewInterval);
+
+		$('label[for="' + $(this).attr('id') + '"]').html(
+			$('<i />')
+				.addClass('fas fa-spinner fa-spin')
+		);
+
+		$.get(
+			'/web/0' +
+			'/action/relay_' + ($(this).is(':checked') ? 'on' : 'off') + '/' +
+			'?device-id=' + $(this).parents('.web-device').data('id'),
+			function() {
+				overviewInterval = setTimeout(overviewIntervalFn, 5000);
+			}
+		)
+	});
+</script>
+<script>
+	moment.locale('cs');
+
+	$($('#web-device-overview-range input')[0]).val(moment().subtract(1, 'week').format('DD.MM.YYYY'));
+	$($('#web-device-overview-range input')[1]).val(moment().format('DD.MM.YYYY'));
+
+	$('#web-device-overview-range input').each(function() {
+		$(this).datepicker({
+			language: 'cs',
+		});
+		$(this).datepicker('update');
+	});
+
+	var deviceChartContext = document.getElementById('web-device-chart').getContext('2d');
+
+	var deviceChartConfig = {
+		data: {
+			datasets: [],
+		},
+		options: {
+			scales: {
+				xAxes: [
+					{
+						type: 'time',
+						time: {
+							unit: 'hour',
+							displayFormats: {
+								hour: 'D.M. H:mm'
+							},
+							tooltipFormat: 'D.M. H:mm',
+						},
+						scaleLabel: {
+							display: true,
+							labelString: 'Datum',
+						},
+						ticks: {
+							major: {
+								fontStyle: 'bold',
+								fontColor: '#FF0000'
+							}
+						},
+					},
+				],
+				yAxes: [
+					{
+						stacked: true,
+						scaleLabel: {
+							display: true,
+							labelString: 'Watty',
+						},
+					},
+				]
+			},
+		},
+	};
+
+	var deviceChart = new Chart(deviceChartContext, deviceChartConfig);
+
+	var chartColors = {
+		red: 'rgb(255, 99, 132)',
+		orange: 'rgb(255, 159, 64)',
+		yellow: 'rgb(255, 205, 86)',
+		green: 'rgb(75, 192, 192)',
+		blue: 'rgb(54, 162, 235)',
+		purple: 'rgb(153, 102, 255)',
+		grey: 'rgb(201, 203, 207)'
+	};
+	var chartColorNames = Object.keys(chartColors);
+	var chartColorIndex = 0;
+
+	function getRandomInt(min, max) {
+		min = Math.ceil(min);
+		max = Math.floor(max);
+		return Math.floor(Math.random() * (max - min) + min); //The maximum is exclusive and the minimum is inclusive
+	}
+
+	function loadChart() {
+		var rangeFrom = moment($($('#web-device-overview-range input')[0]).val(), 'DD.MM.YYYY').format('YYYY-MM-DD');
+		var rangeTill = moment($($('#web-device-overview-range input')[1]).val(), 'DD.MM.YYYY').format('YYYY-MM-DD');
+		var totalEnergy = 0;
+
+		chartColorIndex = 0
+
+		deviceChartConfig.data.datasets = [];
+
+		$.get(
+			'/web-region/{{ region.id }}/log/?from=' + rangeFrom + '%2000:00:00&till=' + rangeTill + '%2023:59:59',
+			function(response) {
+				totalEnergy = totalEnergy + response.total_energy;
+
+				$('#web-device-overview-total').text(Math.round(totalEnergy * 100) / 100);
+
+				var data = [];
+
+				for (var logIndex in response.log) {
+					var log = response.log[logIndex];
+
+					if (log.option !== 'apparent') {
+						continue;
+					}
+
+					data.push({
+						t: moment(log.created_at.replace('+00:00', ''), 'YYYY-MM-DD hh:mm:ss').toDate(),
+						// y: Math.round(parseFloat(log.value) * 240 * 100) / 100,
+						y: Math.round(parseFloat(log.value) * 100) / 100,
+					});
+				}
+
+				var colorIndex = chartColorIndex;
+				chartColorIndex++;
+				var colorName = chartColorNames[chartColorIndex];
+				var color = chartColors[colorName];
+
+				deviceChartConfig.data.datasets.push({
+					label: 'Spotřeba (W)',
+					data: data,
+					type: 'line',
+					borderColor: color,
+					backgroundColor: color,
+				});
+
+				deviceChart.update();
+			}
+		)
+
+		{% comment %}
+		{% for device in region.devices.all %}
+			$.get(
+				'/web/0/log/' + '?from=' + rangeFrom + '%2000:00:00&till=' + rangeTill + '%2023:59:59&device-id={{ device.id }}',
+				function(response) {
+					totalEnergy = totalEnergy + response.total_energy;
+
+					$('#web-device-overview-total').text(Math.round(totalEnergy * 100) / 100);
+
+					var data = [];
+
+					for (var logIndex in response.log) {
+						var log = response.log[logIndex];
+
+						// if (log.option !== 'current') {
+						// 	continue;
+						// }
+
+						if (log.option !== 'apparent') {
+							continue;
+						}
+
+						data.push({
+							t: moment(log.created_at.replace('+00:00', ''), 'YYYY-MM-DD hh:mm:ss').toDate(),
+							// y: Math.round(parseFloat(log.value) * 240 * 100) / 100,
+							y: Math.round(parseFloat(log.value) * 100) / 100,
+						});
+					}
+
+					var colorIndex = chartColorIndex;
+					chartColorIndex++;
+					var colorName = chartColorNames[chartColorIndex];
+					var color = chartColors[colorName];
+
+					deviceChartConfig.data.datasets.push({
+						label: 'Spotřeba - {{ device.name }} (W)',
+						data: data,
+						type: 'line',
+						borderColor: color,
+						backgroundColor: color,
+					});
+
+					deviceChart.update();
+				}
+			)
+		{% endfor %}
+		{% endcomment %}
+	}
+
+	loadChart();
+
+	$(document).on('change', '#web-device-overview-range input', function(e) {
+		loadChart();
+	});
+</script>
+{% endblock %}

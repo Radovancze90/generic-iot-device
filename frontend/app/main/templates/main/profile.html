@@ -1,0 +1,123 @@
+{% extends "main/layout.html" %}
+
+{% load form_tags %}
+
+{% block css %}
+{{ block.super }}
+<style>
+	#web {
+		font-size: .875rem;
+	}
+	#web .sidebar {
+		position: fixed;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		z-index: 0;
+		padding: 48px 0 0;
+		box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+	}
+	@media (max-width: 767.98px) {
+		#web .sidebar {
+			/*TODO: inline*/
+		}
+	}
+	#web .sidebar .nav-link {
+		font-weight: 500;
+		color: #333;
+	}
+	#web .sidebar .nav-link .feather {
+		margin-right: 4px;
+		color: #727272;
+	}
+	#web .sidebar .nav-link.active {
+		color: #007bff;
+	}
+	#web .sidebar .nav-link:hover .feather,
+	#web .sidebar .nav-link.active .feather {
+		color: inherit;
+	}
+</style>
+{% endblock %}
+
+{% block content %}
+<main id="web" class="container-fluid">
+	<div class="row">
+		<nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+			<div class="pt-4">
+				<ul id="web-devices-list" class="nav flex-column">
+					<li class="nav-item">
+						<a class="nav-link" href="{% url 'main:web' %}">
+							<i class="fa fa-list me-1"></i>
+							Přehled
+						</a>
+					</li>
+				</ul>
+			</div>
+		</nav>
+		<main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="margin-bottom:75px;">
+			<form id="form-profile" class="mt-4" method="POST">
+				{% csrf_token %}
+				<h2 class="display-6 mb-4 pb-2 border-bottom">Základní údaje</h2>
+				<div class="mb-3 row">
+					<label class="col-sm-2 col-form-label" for="{{ form_profile.first_name.auto_id }}">{{ form_profile.first_name.label }}</label>
+					<div class="col-sm-10">
+						{{ form_profile.first_name|add_classes:'form-control' }}
+					</div>
+				</div>
+				<div class="mb-3 row">
+					<label class="col-sm-2 col-form-label" for="{{ form_profile.last_name.auto_id }}">{{ form_profile.last_name.label }}</label>
+					<div class="col-sm-10">
+						{{ form_profile.last_name|add_classes:'form-control' }}
+					</div>
+				</div>
+				<div class="mb-3 row">
+					<label class="col-sm-2 col-form-label" for="{{ form_profile.client__phone.auto_id }}">{{ form_profile.client__phone.label }}</label>
+					<div class="col-sm-10">
+						{{ form_profile.client__phone|add_classes:'form-control' }}
+					</div>
+				</div>
+				<h2 class="display-6 mt-4 mb-4 pb-2 border-bottom">Změna hesla</h2>
+				<div class="mb-3 row">
+					<label class="col-sm-2 col-form-label" for="{{ form_profile.password1.auto_id }}">{{ form_profile.password1.label }}</label>
+					<div class="col-sm-10">
+						{{ form_profile.password1|add_classes:'form-control' }}
+					</div>
+				</div>
+				<div class="mb-3 row">
+					<label class="col-sm-2 col-form-label" for="{{ form_profile.password2.auto_id }}">{{ form_profile.password2.label }}</label>
+					<div class="col-sm-10">
+						{{ form_profile.password2|add_classes:'form-control' }}
+					</div>
+				</div>
+				<h2 class="display-6 mt-4 mb-4 pb-2 border-bottom">Další nastavení</h2>
+<!--				<div class="mb-3 row">-->
+<!--					<label class="col-sm-10 offset-sm-2 col-form-label" for="fake_inform">-->
+<!--						<input id="fake_inform" type="checkbox" checked disabled>-->
+<!--						Informovat mne o výpadku-->
+<!--					</label>-->
+<!--				</div>-->
+				<div class="mb-3 row">
+					<label class="col-sm-10 offset-sm-2 col-form-label" for="{{ form_profile.client__outage_notification.auto_id }}">
+						{{ form_profile.client__outage_notification }}
+						{{ form_profile.client__outage_notification.label }}
+					</label>
+				</div>
+				<div class="mb-3 row">
+					<label class="col-sm-2 col-form-label" for="{{ form_profile.email.auto_id }}">{{ form_profile.email.label }}</label>
+					<div class="col-sm-10">
+						{{ form_profile.email|add_classes:'form-control' }}
+					</div>
+				</div>
+				<div class="row">
+					<div class="col-sm-10 offset-sm-2">
+						<button type="submit" class="btn btn-primary">Uložit</button>
+						<a href="{% url 'main:profile_delete' %}" class="btn btn-danger" onclick="return confirm('Opravdu si přejete smazat účet?')">Smazat účet</a>
+					</div>
+				</div>
+			</form>
+			{% include "main/include_footer_side.html" %}
+		</main>
+	</div>
+</main>
+{% endblock %}

@@ -1,0 +1,188 @@
+{% extends "main/layout.html" %}
+
+{% load form_tags %}
+
+{% block css %}
+{{ block.super }}
+<style>
+	#web {
+		font-size: .875rem;
+	}
+	#web .sidebar {
+		position: fixed;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		z-index: 0;
+		padding: 48px 0 0;
+		box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+	}
+	@media (max-width: 767.98px) {
+		#web .sidebar {
+			/*TODO: inline*/
+		}
+	}
+	#web .sidebar .nav-link {
+		font-weight: 500;
+		color: #333;
+	}
+	#web .sidebar .nav-link .feather {
+		margin-right: 4px;
+		color: #727272;
+	}
+	#web .sidebar .nav-link.active {
+		color: #007bff;
+	}
+	#web .sidebar .nav-link:hover .feather,
+	#web .sidebar .nav-link.active .feather {
+		color: inherit;
+	}
+</style>
+{% endblock %}
+
+{% block content %}
+<main id="web" class="container-fluid">
+	<div class="row">
+		<nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+			<div class="pt-4">
+				<ul id="web-devices-list" class="nav flex-column">
+					<li class="nav-item">
+						<a class="nav-link" href="{% url 'main:web' %}">
+							<i class="fa fa-list me-1"></i>
+							Přehled
+						</a>
+					</li>
+				</ul>
+			</div>
+		</nav>
+		<main class="col-md-9 ms-sm-auto col-lg-10 px-md-4" style="margin-bottom:75px;">
+			<form action="?user_device=1" id="form-device" class="mt-4" method="POST">
+				{% csrf_token %}
+				<h2 class="display-6 mb-4 pb-2 border-bottom">Zařízení</h2>
+				<div class="mb-3 row">
+				
+					<label class="col-sm-2 col-form-label" for="{{ form_device.device_brand.auto_id }}">{{ form_device.device_brand.label }}</label>
+					<div class="col-sm-4">
+						{{ form_device.device_brand|add_classes:'form-control' }}
+						{% for error in form_device.device_brand.errors %}
+							<div class="text-danger">{{ error }}</div>
+						{% endfor %}
+					</div>
+				
+					<label class="col-sm-1 col-form-label" for="{{ form_device.device_model.auto_id }}">{{ form_device.device_model.label }}</label>
+					<div class="col-sm-5">
+						{{ form_device.device_model|add_classes:'form-control' }}
+						{% for error in form_device.device_model.errors %}
+							<div class="text-danger">{{ error }}</div>
+						{% endfor %}
+					</div>
+					
+				</div>
+				<div class="mb-3 row">
+					<label class="col-sm-2 col-form-label" for="{{ form_device.device_mac.auto_id }}">{{ form_device.device_mac.label }}</label>
+					<div class="col-sm-4">
+						{{ form_device.device_mac|add_classes:'form-control' }}
+						{% for error in form_device.device_mac.errors %}
+							<div class="text-danger">{{ error }}</div>
+						{% endfor %}
+					</div>
+
+					<label class="col-sm-1 col-form-label" for="{{ form_device.device_password.auto_id }}">{{ form_device.device_password.label }}</label>
+					<div class="col-sm-5">
+						{{ form_device.device_password|add_classes:'form-control' }}
+						{% for error in form_device.device_password.errors %}
+							<div class="text-danger">{{ error }}</div>
+						{% endfor %}
+					</div>
+				</div>
+				<h2 class="display-6 mt-4 mb-4 pb-2 border-bottom">Má nastavení</h2>
+				<div class="mb-3 row">
+					<label class="col-sm-2 col-form-label" for="{{ form_device.name.auto_id }}">{{ form_device.name.label }}</label>
+					<div class="col-sm-10">
+						{{ form_device.name|add_classes:'form-control' }}
+						{% for error in form_device.name.errors %}
+							<div class="text-danger">{{ error }}</div>
+						{% endfor %}
+					</div>
+				</div>
+				<div class="mb-3 row">
+					<label class="col-sm-2 col-form-label" for="{{ form_device.address_street.auto_id }}">{{ form_device.address_street.label }}</label>
+					<div class="col-sm-10">
+						{{ form_device.address_street|add_classes:'form-control' }}
+						{% for error in form_device.address_street.errors %}
+							<div class="text-danger">{{ error }}</div>
+						{% endfor %}
+					</div>
+				</div>
+				<div class="mb-3 row">
+					<label class="col-sm-2 col-form-label" for="{{ form_device.address_city.auto_id }}">{{ form_device.address_city.label }}</label>
+					<div class="col-sm-10">
+						{{ form_device.address_city|add_classes:'form-control' }}
+						{% for error in form_device.address_city.errors %}
+							<div class="text-danger">{{ error }}</div>
+						{% endfor %}
+					</div>
+				</div>
+				<div class="mb-3 row">
+					<label class="col-sm-2 col-form-label" for="{{ form_device.address_postal_code.auto_id }}">{{ form_device.address_postal_code.label }}</label>
+					<div class="col-sm-10">
+						{{ form_device.address_postal_code|add_classes:'form-control' }}
+						{% for error in form_device.address_postal_code.errors %}
+							<div class="text-danger">{{ error }}</div>
+						{% endfor %}
+					</div>
+				</div>
+				<div class="mb-3 row">
+					<label class="col-sm-2 col-form-label" for="{{ form_device.address_country.auto_id }}">{{ form_device.address_country.label }}</label>
+					<div class="col-sm-10">
+						{{ form_device.address_country|add_classes:'form-control' }}
+						{% for error in form_device.address_country.errors %}
+							<div class="text-danger">{{ error }}</div>
+						{% endfor %}
+					</div>
+				</div>
+				<button type="submit" class="btn btn-primary">Uložit</button>
+				{% if user_device and user_device.id %}
+					<a href="{% url 'main:web_device_delete' userDeviceId=user_device.id %}" class="btn btn-danger" onclick="return confirm('Opravdu si přejete smazat zařízení?')">Smazat zařízení</a>
+				{% endif %}
+			</form>
+			{% if user_device.id %}
+				<hr class="mt-4">
+				<form action="?device_cron=1" id="form-device-cron" class="mt-2" method="POST">
+					{% for e in form_device_cron.errors %}
+						{{e}}
+					{% endfor %}
+					{% csrf_token %}
+					<table class="table">
+						<thead>
+							<tr>
+								<th>Hodiny</th>
+								<th>Minuty</th>
+								<th>Operace</th>
+								<th></th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for cron in user_device.device.devicecron_set.all %}
+								<tr class="{% if cron.action == 'relay_on' %}table-success{% elif cron.action == 'relay_off' %}table-danger{% endif %}">
+									<td>{{ cron.hour }}</td>
+									<td>{{ cron.minute }}</td>
+									<td>{{ cron.get_action }}</td>
+									<td><a href="{% url 'main:web_device_cron_delete' userDeviceId=user_device.id deviceCronId=cron.id %}" class="btn btn-warning btn-sm"><i class="fa fa-trash"></i></a></td>
+								</tr>
+							{% endfor %}
+							<tr>
+								<td>{{ form_device_cron.hour|add_classes:'form-control' }}</td>
+								<td>{{ form_device_cron.minute|add_classes:'form-control' }}</td>
+								<td>{{ form_device_cron.action|add_classes:'form-control' }}</td>
+								<td><button type="submit" class="btn btn-success btn-sm"><i class="fa fa-plus"></i></button></td>
+							</tr>
+						</tbody>
+					</table>
+				</form>
+			{% endif %}
+			{% include "main/include_footer_side.html" %}
+		</main>
+	</div>
+</main>
+{% endblock %}

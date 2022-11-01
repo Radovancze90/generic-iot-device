@@ -1,0 +1,105 @@
+{% extends "main/layout.html" %}
+
+{% load form_tags %}
+
+{% block css %}
+{{ block.super }}
+<style>
+	.grecaptcha-badge {
+		z-index: 99999;
+		display:block !important;
+	}
+</style>
+{% endblock %}}
+
+{% block content %}
+	<main class="container mt-5" style="margin-bottom:75px;">
+		<h1>Registrace</h1>
+		<form id="form-signup" class="row g-3" method="POST">
+			{% csrf_token %}
+			<div class="col-lg-12 col-md-12 col-sm-12">
+				{{ form_user.username.label_tag }}
+				{{ form_user.username|add_classes:'form-control' }}
+				{% for error in form_user.username.errors %}
+					<div class="text-danger">{{ error }}</div>
+				{% endfor %}
+				{% if form_user.username.help_text %}
+					<div id="emailHelp" class="form-text">{{ form_user.username.help_text }}</div>
+				{% endif %}
+			</div>
+			<div class="col-lg-12 col-md-12 col-sm-12">
+				{{ form_user.password1.label_tag }}
+				{{ form_user.password1|add_classes:'form-control' }}
+				{% for error in form_user.password1.errors %}
+					<div class="text-danger">{{ error }}</div>
+				{% endfor %}
+				{% if form_user.password1.help_text %}
+					<div id="emailHelp" class="form-text">{{ form_user.password1.help_text }}</div>
+				{% endif %}
+			</div>
+			<div class="col-lg-12 col-md-12 col-sm-12">
+				{{ form_user.password2.label_tag }}
+				{{ form_user.password2|add_classes:'form-control' }}
+				{% for error in form_user.password2.errors %}
+					<div class="text-danger">{{ error }}</div>
+				{% endfor %}
+				{% if form_user.password2.help_text %}
+					<div id="emailHelp" class="form-text">{{ form_user.password2.help_text }}</div>
+				{% endif %}
+			</div>
+			<div class="col-lg-12 col-md-12 col-sm-12">
+				{{ form_user.first_name.label_tag }}
+				{{ form_user.first_name|add_classes:'form-control' }}
+				{% for error in form_user.first_name.errors %}
+					<div class="text-danger">{{ error }}</div>
+				{% endfor %}
+				{% if form_user.first_name.help_text %}
+					<div id="emailHelp" class="form-text">{{ form_user.first_name.help_text }}</div>
+				{% endif %}
+			</div>
+			<div class="col-lg-12 col-md-12 col-sm-12">
+				{{ form_user.last_name.label_tag }}
+				{{ form_user.last_name|add_classes:'form-control' }}
+				{% for error in form_user.last_name.errors %}
+					<div class="text-danger">{{ error }}</div>
+				{% endfor %}
+				{% if form_user.last_name.help_text %}
+					<div id="emailHelp" class="form-text">{{ form_user.last_name.help_text }}</div>
+				{% endif %}
+			</div>
+			<div class="col-lg-12 col-md-12 col-sm-12">
+				{{ form_user.client__phone.label_tag }}
+				{{ form_user.client__phone|add_classes:'form-control' }}
+				{% for error in form_user.client__phone.errors %}
+					<div class="text-danger">{{ error }}</div>
+				{% endfor %}
+				{% if form_user.client__phone.help_text %}
+					<div id="emailHelp" class="form-text">{{ form_user.client__phone.help_text }}</div>
+				{% endif %}
+			</div>
+			<div class="col-lg-12 col-md-12 col-sm-12">
+				{{ form_user.terms_and_conditions.label_tag }}
+				{{ form_user.terms_and_conditions|add_classes:'form-check-input' }}
+				{% for error in form_user.terms_and_conditions.errors %}
+					<div class="text-danger">{{ error }}</div>
+				{% endfor %}
+				{% if form_user.terms_and_conditions.help_text %}
+					<div id="emailHelp" class="form-text">{{ form_user.terms_and_conditions.help_text }}</div>
+				{% endif %}
+			</div>
+			<div class="col-lg-12 col-md-12 col-sm-12">
+				{{ form_user.captcha }}
+				{% for error in form_user.captcha.errors %}
+					<div class="text-danger">{{ error }}</div>
+				{% endfor %}
+				{% if form_user.captcha.help_text %}
+					<div id="emailHelp" class="form-text">{{ form_user.captcha.help_text }}</div>
+				{% endif %}
+			</div>
+			<div class="col-lg-12 col-md-12 col-sm-12">
+				<button type="submit" class="btn btn-primary">Registrovat</button>
+			</div>
+		</form>
+		{% include "main/include_footer_full.html" %}
+	</main>
+{% endblock %}

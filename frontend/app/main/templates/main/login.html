@@ -1,0 +1,57 @@
+{% extends "main/layout.html" %}
+
+{% load form_tags %}
+
+{% block css %}
+	{{ block.super }}
+	<style>
+		.form-signin .form-control {
+			position: relative;
+			box-sizing: border-box;
+			height: auto;
+			padding: 10px;
+			font-size: 16px;
+		}
+		.form-signin .form-control:focus {
+			z-index: 2;
+		}
+		.form-signin input[type="email"] {
+			margin-bottom: -1px;
+			border-bottom-right-radius: 0;
+			border-bottom-left-radius: 0;
+		}
+		.form-signin input[type="password"] {
+			margin-bottom: 10px;
+			border-top-left-radius: 0;
+			border-top-right-radius: 0;
+		}
+	</style>
+{% endblock %}}
+
+{% block content %}
+	<main class="container mt-5" style="margin-bottom:75px;">
+		<div class="row">
+			<div class="col-lg-4 col-md-6 col-sm-12 mx-auto">
+				<h1 class="h3 mb-3 fw-normal">Přihlášení</h1>
+				<form class="form-signin" method="POST">
+					{% csrf_token %}
+					{{ form.username|add_classes:'form-control' }}
+					{{ form.password|add_classes:'form-control' }}
+					{{ form.remember_me.label_tag }}
+					{{ form.remember_me|add_classes:'form-check-input' }}
+					{% for field in form %}
+						{% for error in field.errors %}
+							<div class="text-danger">{{ error }}</div>
+						{% endfor %}
+					{% endfor %}
+					<button class="w-100 btn btn-lg btn-primary mt-3" type="submit">Přihlásit se</button>
+					<p class="mt-5 mb-3 text-muted text-center">
+						Pokud ještě nemáte účet můžete se <a href="{% url 'main:register' %}">registrovat</a>.<br />
+						Pokud si nepamatujete své heslo můžete ho <a href="{% url 'main:password' %}">restartovat</a>.
+					</p>
+				</form>
+			</div>
+		</div>
+		{% include "main/include_footer_full.html" %}
+	</main>
+{% endblock %}
